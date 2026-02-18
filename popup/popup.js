@@ -12,7 +12,7 @@ chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
     trackSelect.value = data.track;
 });
 
-// Save settings and notify background
+// Save settings
 function updateSettings() {
     const settings = {
         enabled: powerToggle.checked,
@@ -21,7 +21,6 @@ function updateSettings() {
     };
 
     chrome.storage.local.set(settings);
-    chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
 }
 
 powerToggle.addEventListener('change', updateSettings);
