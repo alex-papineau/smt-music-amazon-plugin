@@ -10,7 +10,7 @@ A Chrome Extension that plays the SMT IV Black Market OST while on Amazon. Compl
 2. Open Chrome and navigate to `chrome://extensions/`.
 3. Enable **Developer Mode** (top right).
 4. Click **Load unpacked** and select the root directory of this project.
-5. **Visit Amazon.** THe song should play automatically. Click the extension icon in the toolbar to open the controls.
+5. **Visit Amazon.** The song should play automatically. Click the extension icon in the toolbar to open the controls.
 
 ## How it works
 
