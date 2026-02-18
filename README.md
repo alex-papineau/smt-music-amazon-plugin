@@ -4,7 +4,7 @@ A Chrome Extension that brings the atmosphere of the SMT IV Black Market to your
 
 *"You HAD to come now, didn't you?"*
 
-## 🛠️ Installation
+## Installation
 
 1. Clone or download this repository.
 2. Open Chrome and navigate to `chrome://extensions/`.
