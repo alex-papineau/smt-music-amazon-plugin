@@ -2,7 +2,7 @@
 
 A Chrome Extension that plays the SMT IV Black Market OST while on Amazon. Complete with a popup UI to control the music.
 
-*"You HAD to come now, didn't you?"*
+*"Make sure you bring more Macca next time."*
 
 ## Installation
 
