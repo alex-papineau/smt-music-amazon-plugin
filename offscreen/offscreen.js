@@ -2,7 +2,7 @@ const player = document.getElementById('player');
 let currentTrack = '';
 
 function init() {
-    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (data) => {
+    chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
         if (data && data.enabled) {
             updatePlayer(data.track, data.volume, data.enabled);
         }
@@ -10,6 +10,8 @@ function init() {
 }
 
 function updatePlayer(track, volume, enabled) {
+    if (!track) return;
+
     // Convert relative extension path to full URL
     const trackUrl = chrome.runtime.getURL(track);
 
@@ -19,21 +21,31 @@ function updatePlayer(track, volume, enabled) {
         player.load();
     }
 
-    player.volume = volume / 100;
+    player.volume = (volume || 0) / 100;
 
     if (enabled) {
-        player.play().catch(err => console.error("Playback failed:", err));
+        player.play().catch(err => {
+            if (err.name !== 'AbortError') {
+                console.error("Playback failed:", err);
+            }
+        });
     } else {
         player.pause();
     }
 }
 
-// Listen for updates from background/popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'SYNC_OFFSCREEN') {
-        const { track, volume, enabled } = message.settings;
-        updatePlayer(track, volume, enabled);
-    } else if (message.type === 'RESTART_OFFSCREEN') {
+// Listen for storage changes
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+        chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
+            updatePlayer(data.track, data.volume, data.enabled);
+        });
+    }
+});
+
+// Listen for manual actions (like RESTART)
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'RESTART_OFFSCREEN') {
         player.currentTime = 0;
         player.play().catch(err => console.error("Restart failed:", err));
     }
