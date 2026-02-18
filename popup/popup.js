@@ -7,9 +7,14 @@ const restartBtn = document.getElementById('restart-btn');
 
 // Load settings
 chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
-    powerToggle.checked = data.enabled;
-    volumeSlider.value = data.volume;
-    trackSelect.value = data.track;
+    powerToggle.checked = data.enabled !== false; // Default to true
+    volumeSlider.value = data.volume || 50;
+
+    let track = data.track || 'assets/black_market.webm';
+    if (track.startsWith('content/')) {
+        track = track.replace('content/', 'assets/');
+    }
+    trackSelect.value = track;
 });
 
 // Save settings
