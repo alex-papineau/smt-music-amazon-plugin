@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+#smt4-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(8, 8, 8, 0.9);
+    color: #22da09;
+    border: 2px solid #22da09;
+    padding: 10px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    z-index: 999999;
+    animation: slide-in 0.5s ease-out;
+    pointer-events: none;
+}
+
+.toast-header {
+    font-size: 14px;
+    font-weight: bold;
+    border-bottom: 1px solid #22da09;
+    margin-bottom: 5px;
+    letter-spacing: 2px;
+}
+
+.toast-body {
+    font-size: 12px;
+}
+
+@keyframes slide-in {
+    from {
+        transform: translateX(120%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+.fade-out {
+    opacity: 0;
+    transition: opacity 1s ease-in;
+}
