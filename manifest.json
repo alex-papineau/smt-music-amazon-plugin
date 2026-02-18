@@ -4,9 +4,9 @@
     "description": "Plays the 'Black Market' theme from Shin Megami Tensei IV while you shop on Amazon. \n 'You HAD to come now, didn't you?'",
     "version": "2.0",
     "icons": {
-        "16": "content/smirk.png",
-        "48": "content/smirk.png",
-        "128": "content/smirk.png"
+        "16": "assets/smirk.png",
+        "48": "assets/smirk.png",
+        "128": "assets/smirk.png"
     },
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'none';"
@@ -27,7 +27,7 @@
     ],
     "action": {
         "default_popup": "popup/popup.html",
-        "default_icon": "content/smirk.png"
+        "default_icon": "assets/smirk.png"
     },
     "background": {
         "service_worker": "background.js"
@@ -45,10 +45,10 @@
                 "https://*.amazon.co.jp/*"
             ],
             "js": [
-                "Content.js"
+                "content.js"
             ],
             "css": [
-                "Content.css"
+                "content.css"
             ]
         }
     ],
@@ -56,8 +56,8 @@
         {
             "resources": [
                 "offscreen/offscreen.html",
-                "content/*.webm",
-                "content/*.png"
+                "assets/*.webm",
+                "assets/*.png"
             ],
             "matches": [
                 "<all_urls>"
