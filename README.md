@@ -23,6 +23,7 @@ This extension uses a service worker to play the SMT IV Black Market OST while o
 - [ ] Add Tanaka's Amazing Commodities theme to the plugin selection.
 - [ ] Add Nocturne Junk Shop theme to the plugin selection.
 - [ ] Add P1 Black Market theme to the plugin selection.
+- [ ] Update plugin description and installation instructions.
 - [ ] Implement local file picker/manager in the Plugin UI.
 
 ### Enhancements (priority: medium)
