@@ -169,6 +169,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
+// Keep-alive for Firefox
+chrome.runtime.onConnect.addListener((port) => {
+    if (port.name === 'keep-alive') {
+        // console.log("Keep-alive port connected");
+        port.onDisconnect.addListener(() => {
+            // console.log("Keep-alive port disconnected");
+        });
+    }
+});
+
 // Listen for storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
