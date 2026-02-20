@@ -2,7 +2,7 @@
 
 A Chrome Extension that plays the SMT IV Black Market OST while on Amazon. Complete with a popup UI to control the music.
 
-*"Make sure you bring more Macca next time."*
+*"You HAD to come now, didn't you?"*
 
 ## Installation
 
@@ -19,7 +19,6 @@ This extension uses a service worker to play the SMT IV Black Market OST while o
 ## TODO List
 
 ### Song Selection (priority: high)
-- [x] Add Black Market theme to the plugin selection.
 - [ ] Add Tanaka's Amazing Commodities theme to the plugin selection.
 - [ ] Add Nocturne Junk Shop theme to the plugin selection.
 - [ ] Add P1 Black Market theme to the plugin selection.
