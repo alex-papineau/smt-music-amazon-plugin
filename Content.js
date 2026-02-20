@@ -1,6 +1,13 @@
 // Notify background that a valid Amazon page is loaded
 chrome.runtime.sendMessage({ type: 'AMAZON_VISITED' });
 
+// Keep-alive connection for Firefox background script
+const port = chrome.runtime.connect({ name: 'keep-alive' });
+port.onDisconnect.addListener(() => {
+  console.log("Keep-alive port disconnected");
+});
+
+
 // Create a stylish toast notification
 function showSamuraiToast() {
   const toast = document.createElement('div');
