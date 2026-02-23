@@ -29,6 +29,7 @@ if (HAS_DOM) {
     console.log("Environment supports DOM access. Utilizing direct audio playback.");
     audioPlayer = new Audio();
     audioPlayer.loop = true;
+    audioPlayer.crossOrigin = 'anonymous';
 } else {
     console.log("Environment is Service Worker. Utilizing Offscreen API.");
 }
