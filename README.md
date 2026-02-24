@@ -1,16 +1,8 @@
 # Amazon SMT Music Companion
 
-A Chrome and Firefox Extension that plays music from a selection of black market/shopping related tracks from ATLUS' various games (SMT 4, SMT 3, P1 and P3 so far) while browsing Amazon. Complete with a popup UI to control the music.
+A Firefox Extension that plays music from a selection of black market/shopping related tracks from ATLUS' various games (SMT 4, SMT 3, P1 and P3 so far) while browsing Amazon. Complete with a popup UI to control the music.
 
 *"Make sure you bring more Macca next time."*
-
-## Installation -- Chrome
-
-1. Clone or download this repository.
-2. Open Chrome and navigate to `chrome://extensions/`.
-3. Enable **Developer Mode** (top right).
-4. Click **Load unpacked** and select the root directory of this project.
-5. **Visit Amazon.** The song should play automatically. Click the extension icon in the toolbar to open the controls.
 
 ## Installation -- Firefox (wip to no longer use temporary add-on)
 
@@ -37,7 +29,6 @@ The extension uses a background script to monitor your active tabs for Amazon UR
 
 ### Enhancements (priority: medium)
 - [x] Research alternative method for audio playback -- github page hosting
-- [ ] Volume fade-in/out transitions.
 - [x] Add a "Random" button to the track select.
 - [x] UI Styling updates.
 
