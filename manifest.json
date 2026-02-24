@@ -57,17 +57,6 @@
             ]
         }
     ],
-    "web_accessible_resources": [
-        {
-            "resources": [
-                "offscreen/offscreen.html",
-                "assets/*.png"
-            ],
-            "matches": [
-                "<all_urls>"
-            ]
-        }
-    ],
     "browser_specific_settings": {
         "gecko": {
             "id": "smt4-amazon-edition@example.com",

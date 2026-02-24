@@ -4,7 +4,7 @@ A Firefox Extension that plays music from a selection of black market/shopping r
 
 *"Make sure you bring more Macca next time."*
 
-## Installation -- Firefox (wip to no longer use temporary add-on)
+## Installation
 
 1. Clone or download this repository.
 2. Open Firefox and navigate to `about:debugging`.
@@ -14,23 +14,15 @@ A Firefox Extension that plays music from a selection of black market/shopping r
 
 ## How it works
 
-The extension uses a background script to monitor your active tabs for Amazon URLs. When an Amazon page is detected, it triggers audio playback of tracks hosted via GitHub Pages to ensure a lightweight installation. The popup interface communicates with the background script using the WebExtension API to allow users to switch between different SMT shop themes, adjust volume, and toggle playback.
+The extension uses a background script to monitor your active tabs for Amazon URLs. When an Amazon page is detected, it triggers audio playback of tracks hosted via GitHub Pages. The background page in Firefox handles the playback directly using the standard Audio API.
 
-## TODO List
+## Features
 
-### Song Selection (priority: high)
-- [x] Implement alternative method for audio playback -- github page hosting
-- [x] Add Black Market theme to the plugin selection.
-- [x] Add Tanaka's Amazing Commodities theme to the plugin selection.
-- [x] Add Nocturne Junk Shop theme to the plugin selection.
-- [x] Add P1 Black Market theme to the plugin selection.
-- [ ] Update plugin description and installation instructions.
-- [x] Implement file picker/manager in the Plugin UI.
+- **"Active Tab Only" Playback**: Automatically pauses music when you switch to other tabs or windows.
+- **Track Randomization**: Pick a random track anytime with the "RANDOM" button.
+- **SMT IV Style UI**: A terminal-themed popup interface inspired by SMT IV.
+- **Dynamic Notifications**: A custom "Now Playing" toast appears on Amazon pages.
 
-### Enhancements (priority: medium)
-- [x] Research alternative method for audio playback -- github page hosting
-- [x] Add a "Random" button to the track select.
-- [x] UI Styling updates.
+## License
 
-### Browser Support (priority: low)
-- [ ] Verify content script permissions across different browser engines.
+MIT

@@ -1,8 +1,7 @@
 // Initialize storage with defaults and handle migrations
 chrome.runtime.onInstalled.addListener(async (details) => {
-    const data = await chrome.storage.local.get(['enabled', 'volume', 'track']);
+    const data = await chrome.storage.local.get(['enabled', 'volume', 'track', 'onlyActiveTab']);
 
-    // Migration logic
     const defaults = {
         enabled: data.enabled ?? true,
         volume: data.volume ?? 50,
@@ -22,23 +21,16 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     await chrome.storage.local.set(defaults);
 });
 
-// Detect environment capabilities
-const HAS_DOM = typeof window !== 'undefined' && typeof window.document !== 'undefined';
-let audioPlayer = null;
+// Firefox Environment: Background pages always have DOM access
+let audioPlayer = new Audio();
+audioPlayer.loop = true;
+audioPlayer.crossOrigin = 'anonymous';
+
 let currentTrack = '';
 let currentVolume = 50;
 let isAudioEnabled = true;
 
-if (HAS_DOM) {
-    console.log("Environment supports DOM access. Utilizing direct audio playback.");
-    audioPlayer = new Audio();
-    audioPlayer.loop = true;
-    audioPlayer.crossOrigin = 'anonymous';
-} else {
-    console.log("Environment is Service Worker. Utilizing Offscreen API.");
-}
-
-// Function to handle direct audio playback (Firefox mainly)
+// Function to handle direct audio playback
 function updateDirectAudio(track, volume, enabled) {
     if (!audioPlayer) return;
 
@@ -85,11 +77,10 @@ function applyPlaybackState() {
     }
 }
 
-// Helper to sync offscreen document state or direct audio with current browser state
+// Helper to sync direct audio with current browser state
 async function syncState() {
     let { enabled, volume, track, onlyActiveTab } = await chrome.storage.local.get(['enabled', 'volume', 'track', 'onlyActiveTab']);
 
-    // Default onlyActiveTab if not set
     if (onlyActiveTab === undefined) onlyActiveTab = true;
 
     // Robust Migration: Always check if the current track is a legacy local path or old repo
@@ -135,91 +126,25 @@ async function syncState() {
 
     console.log(`Sync check: enabled=${enabled}, active amazon tabs=${amazonTabs.length}, onlyActiveTab=${onlyActiveTab}, isActiveTabAmazon=${isActiveTabAmazon}, track=${track}`);
 
-    // Priority Logic: Use Offscreen for Chrome (Service Workers), but Direct Audio for Firefox (Background Pages)
-    // UNLESS direct audio fails or isn't possible.
-    if (!HAS_DOM) {
-        // Service Worker / Offscreen Logic (Chrome)
-        if (shouldPlay) {
-            await ensureOffscreen();
-            setTimeout(() => {
-                chrome.runtime.sendMessage({ type: 'SYNC_OFFSCREEN', settings: { enabled, volume, track } }).catch(() => { });
-            }, 100);
-        } else {
-            await closeOffscreen();
-        }
-    } else {
-        // Direct Audio Logic (Firefox)
-        // Only update state here - actual play() is called synchronously from the message handler
-        updateDirectAudio(track, volume, shouldPlay);
-    }
-}
-
-async function ensureOffscreen() {
-    if (HAS_DOM) return; // Should not happen given logic, but safety check
-
-    // Check if offscreen API is available (it might not be in Firefox even if no DOM, though unlikely combo)
-    if (!chrome.offscreen) {
-        console.warn("chrome.offscreen API not available.");
-        return;
-    }
-
-    if (await chrome.offscreen.hasDocument()) return;
-
-    try {
-        console.log("Creating offscreen document...");
-        await chrome.offscreen.createDocument({
-            url: 'offscreen/offscreen.html',
-            reasons: ['AUDIO_PLAYBACK'],
-            justification: 'Play SMT IV background music while browsing Amazon.'
-        });
-    } catch (err) {
-        if (!err.message.includes('Only a single offscreen document may be created')) {
-            console.error("Failed to create offscreen document:", err);
-        }
-    }
-}
-
-async function closeOffscreen() {
-    if (HAS_DOM) return;
-
-    if (chrome.offscreen && await chrome.offscreen.hasDocument()) {
-        console.log("Closing offscreen document");
-        await chrome.offscreen.closeDocument();
-    }
+    updateDirectAudio(track, volume, shouldPlay);
 }
 
 // Handle messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'AMAZON_VISITED') {
-        // Trigger sync to update tab count and verify state
         syncState().then(() => {
-            if (HAS_DOM) {
-                // For Firefox: we play immediately when sync is done.
-                // The delay the user saw might be because syncState waits for tabs.query.
-                // Since this message came FROM an Amazon tab, we already know we have at least one.
-                applyPlaybackState();
-            }
+            applyPlaybackState();
         });
     } else if (message.type === 'RANDOMIZE_TRACK') {
         randomizeTrack();
     } else if (message.type === 'RESTART_TRACK') {
-        if (HAS_DOM) {
-            if (audioPlayer) {
-                console.log("Restarting direct track");
-                audioPlayer.currentTime = 0;
-                audioPlayer.play().catch(console.error);
-            }
-        } else {
-            chrome.runtime.sendMessage({ type: 'RESTART_OFFSCREEN' }).catch(() => { });
+        if (audioPlayer) {
+            console.log("Restarting track");
+            audioPlayer.currentTime = 0;
+            audioPlayer.play().catch(console.error);
         }
-    } else if (message.type === 'GET_SETTINGS_FOR_OFFSCREEN') {
-        chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
-            sendResponse(data || {});
-        });
-        return true;
     }
 
-    // Explicitly return false for unhandled messages to avoid "Promise response went out of scope" error in Firefox
     return false;
 });
 
@@ -228,21 +153,17 @@ async function randomizeTrack() {
     const newTrack = getRandomTrackUrl();
     await chrome.storage.local.set({ track: newTrack });
     syncState().then(() => {
-        if (HAS_DOM) applyPlaybackState();
+        applyPlaybackState();
     });
 }
 
 // Keep-alive for Firefox
 chrome.runtime.onConnect.addListener((port) => {
     if (port.name === 'keep-alive') {
-        // console.log("Keep-alive port connected");
         port.onMessage.addListener((msg) => {
             if (msg.type === 'ping') {
-                // console.log("Received keep-alive ping");
+                // Ping received
             }
-        });
-        port.onDisconnect.addListener(() => {
-            // console.log("Keep-alive port disconnected");
         });
     }
 });
@@ -251,52 +172,47 @@ chrome.runtime.onConnect.addListener((port) => {
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
         syncState().then(() => {
-            if (HAS_DOM) applyPlaybackState();
+            applyPlaybackState();
         });
     }
 });
 
-// Fallback heartbeat for Firefox MV3 (alarms keep the script alive)
+// Heartbeat alarm to keep background script alive
 chrome.alarms.create('heartbeat', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'heartbeat') {
-        // Just waking up
-        // console.log("Background heartbeat alarm fired");
+        // Heartbeat pulse
     }
 });
 
 // Tab event listeners
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
-    // Give a small delay to ensure tab is fully removed from query results
     setTimeout(() => {
         syncState().then(() => {
-            if (HAS_DOM) applyPlaybackState();
+            applyPlaybackState();
         });
     }, 100);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    // We sync on URL changes or status completion to be safe
     if (changeInfo.url || changeInfo.status === 'complete') {
-        // Also delay slightly to ensure tab status is reflected
         setTimeout(() => {
             syncState().then(() => {
-                if (HAS_DOM) applyPlaybackState();
+                applyPlaybackState();
             });
         }, 100);
     }
 });
 
-// New listeners for "Active Tab Only" mode
 chrome.tabs.onActivated.addListener(() => {
     syncState().then(() => {
-        if (HAS_DOM) applyPlaybackState();
+        applyPlaybackState();
     });
 });
 
 chrome.windows.onFocusChanged.addListener(() => {
     syncState().then(() => {
-        if (HAS_DOM) applyPlaybackState();
+        applyPlaybackState();
     });
 });
 
