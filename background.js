@@ -2,17 +2,16 @@
 chrome.runtime.onInstalled.addListener(async (details) => {
     const data = await chrome.storage.local.get(['enabled', 'volume', 'track']);
 
+    // Migration logic
     const defaults = {
         enabled: data.enabled ?? true,
         volume: data.volume ?? 50,
-        track: data.track ?? 'https://alex-papineau.github.io/smt-music-amazon-plugin/music/smt4_black_market.webm'
+        track: data.track ?? getDefaultTrackUrl()
     };
 
-    // Migrate old local paths or incorrect names to remote
-    if (defaults.track.startsWith('assets/') || defaults.track.startsWith('content/') || defaults.track.includes('black_market.webm')) {
-        if (!defaults.track.includes('music/')) {
-            defaults.track = 'https://alex-papineau.github.io/smt-music-amazon-plugin/music/smt4_black_market.webm';
-        }
+    // Ensure track is remote
+    if (defaults.track.startsWith('assets/') || defaults.track.startsWith('content/') || (defaults.track.includes('black_market.webm') && !defaults.track.includes('music/'))) {
+        defaults.track = getDefaultTrackUrl();
     }
 
     await chrome.storage.local.set(defaults);
@@ -79,7 +78,18 @@ function updateDirectAudio(track, volume, enabled) {
 
 // Helper to sync offscreen document state or direct audio with current browser state
 async function syncState() {
-    const { enabled, volume, track } = await chrome.storage.local.get(['enabled', 'volume', 'track']);
+    let { enabled, volume, track } = await chrome.storage.local.get(['enabled', 'volume', 'track']);
+
+    // Robust Migration: Always check if the current track is a legacy local path
+    const isLegacy = track && (track.startsWith('assets/') ||
+        track.startsWith('content/') ||
+        (track.includes('black_market.webm') && !track.includes('smt4_black_market.webm')));
+
+    if (isLegacy) {
+        console.log("Migration triggered: correcting legacy track path.");
+        track = getDefaultTrackUrl();
+        await chrome.storage.local.set({ track });
+    }
 
     // Check if any Amazon tabs are open
     const amazonTabs = await chrome.tabs.query({
@@ -96,25 +106,26 @@ async function syncState() {
     });
 
     const hasAmazonTabs = amazonTabs.length > 0;
-    console.log(`Sync check: enabled=${enabled}, active amazon tabs=${amazonTabs.length}`);
+    console.log(`Sync check: enabled=${enabled}, active amazon tabs=${amazonTabs.length}, track=${track}`);
 
-    if (HAS_DOM) {
-        // Direct Audio Logic
-        if (enabled && hasAmazonTabs) {
-            updateDirectAudio(track, volume, true);
-        } else {
-            updateDirectAudio(track, volume, false);
-        }
-    } else {
-        // Service Worker / Offscreen Logic
+    // Priority Logic: Use Offscreen for Chrome (Service Workers), but Direct Audio for Firefox (Background Pages)
+    // UNLESS direct audio fails or isn't possible.
+    if (!HAS_DOM) {
+        // Service Worker / Offscreen Logic (Chrome)
         if (enabled && hasAmazonTabs) {
             await ensureOffscreen();
-            // Give a tiny moment for document to wake up if just created
             setTimeout(() => {
                 chrome.runtime.sendMessage({ type: 'SYNC_OFFSCREEN', settings: { enabled, volume, track } }).catch(() => { });
             }, 100);
         } else {
             await closeOffscreen();
+        }
+    } else {
+        // Direct Audio Logic (Firefox)
+        if (enabled && hasAmazonTabs) {
+            updateDirectAudio(track, volume, true);
+        } else {
+            updateDirectAudio(track, volume, false);
         }
     }
 }
@@ -169,10 +180,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
     } else if (message.type === 'GET_SETTINGS_FOR_OFFSCREEN') {
         chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
-            sendResponse(data);
+            sendResponse(data || {});
         });
         return true;
     }
+
+    // Explicitly return false for unhandled messages to avoid "Promise response went out of scope" error in Firefox
+    return false;
 });
 
 // Keep-alive for Firefox

@@ -5,16 +5,29 @@ const playBtn = document.getElementById('play-btn');
 const pauseBtn = document.getElementById('pause-btn');
 const restartBtn = document.getElementById('restart-btn');
 
+// Populate track list from CONFIG
+function populateTracks() {
+    trackSelect.innerHTML = '';
+    CONFIG.TRACKS.forEach(track => {
+        const option = document.createElement('option');
+        option.value = getTrackUrl(track.filename);
+        option.textContent = track.name;
+        trackSelect.appendChild(option);
+    });
+}
+
 // Load settings
 chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
+    populateTracks();
+
     powerToggle.checked = data.enabled !== false; // Default to true
     volumeSlider.value = data.volume || 50;
 
-    let track = data.track || 'https://alex-papineau.github.io/smt-music-amazon-plugin/music/smt4_black_market.webm';
+    let track = data.track || getDefaultTrackUrl();
 
     // For legacy support/safety if someone has an old local path stored or old name
     if (track.startsWith('assets/') || track.startsWith('content/') || (track.includes('black_market.webm') && !track.includes('music/'))) {
-        track = 'https://alex-papineau.github.io/smt-music-amazon-plugin/music/smt4_black_market.webm';
+        track = getDefaultTrackUrl();
     }
 
     trackSelect.value = track;
