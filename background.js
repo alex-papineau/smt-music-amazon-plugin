@@ -6,7 +6,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     const defaults = {
         enabled: data.enabled ?? true,
         volume: data.volume ?? 50,
-        track: data.track ?? getDefaultTrackUrl()
+        track: data.track ?? getRandomTrackUrl()
     };
 
     // Ensure track is remote and using the correct repo
@@ -181,6 +181,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 applyPlaybackState();
             }
         });
+    } else if (message.type === 'RANDOMIZE_TRACK') {
+        randomizeTrack();
     } else if (message.type === 'RESTART_TRACK') {
         if (HAS_DOM) {
             if (audioPlayer) {
@@ -201,6 +203,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Explicitly return false for unhandled messages to avoid "Promise response went out of scope" error in Firefox
     return false;
 });
+
+// Select a random track and update storage
+async function randomizeTrack() {
+    const newTrack = getRandomTrackUrl();
+    await chrome.storage.local.set({ track: newTrack });
+    syncState().then(() => {
+        if (HAS_DOM) applyPlaybackState();
+    });
+}
 
 // Keep-alive for Firefox
 chrome.runtime.onConnect.addListener((port) => {

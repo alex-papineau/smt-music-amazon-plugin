@@ -4,6 +4,7 @@ const trackSelect = document.getElementById('track-select');
 const playBtn = document.getElementById('play-btn');
 const pauseBtn = document.getElementById('pause-btn');
 const restartBtn = document.getElementById('restart-btn');
+const randomBtn = document.getElementById('random-btn');
 
 // Populate track list from CONFIG
 function populateTracks() {
@@ -52,6 +53,13 @@ powerToggle.addEventListener('change', updateSettings);
 volumeSlider.addEventListener('input', updateSettings);
 trackSelect.addEventListener('change', updateSettings);
 
+// Listen for background changes (like Randomization) to keep UI in sync
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.track) {
+        trackSelect.value = changes.track.newValue;
+    }
+});
+
 playBtn.addEventListener('click', () => {
     powerToggle.checked = true;
     updateSettings();
@@ -64,4 +72,8 @@ pauseBtn.addEventListener('click', () => {
 
 restartBtn.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'RESTART_TRACK' });
+});
+
+randomBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'RANDOMIZE_TRACK' });
 });

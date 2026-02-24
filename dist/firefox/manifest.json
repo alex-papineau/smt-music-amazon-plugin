@@ -49,6 +49,7 @@
                 "https://*.amazon.co.jp/*"
             ],
             "js": [
+                "config.js",
                 "content.js"
             ],
             "css": [

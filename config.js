@@ -38,3 +38,9 @@ function getTrackUrl(trackFilename) {
 function getDefaultTrackUrl() {
     return getTrackUrl(CONFIG.TRACKS[CONFIG.DEFAULT_TRACK_INDEX].filename);
 }
+
+// Pick a random track from the list
+function getRandomTrackUrl() {
+    const randomIndex = Math.floor(Math.random() * CONFIG.TRACKS.length);
+    return getTrackUrl(CONFIG.TRACKS[randomIndex].filename);
+}
