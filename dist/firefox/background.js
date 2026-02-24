@@ -249,14 +249,22 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // Tab event listeners
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
     // Give a small delay to ensure tab is fully removed from query results
-    setTimeout(syncState, 100);
+    setTimeout(() => {
+        syncState().then(() => {
+            if (HAS_DOM) applyPlaybackState();
+        });
+    }, 100);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     // We sync on URL changes or status completion to be safe
     if (changeInfo.url || changeInfo.status === 'complete') {
         // Also delay slightly to ensure tab status is reflected
-        setTimeout(syncState, 100);
+        setTimeout(() => {
+            syncState().then(() => {
+                if (HAS_DOM) applyPlaybackState();
+            });
+        }, 100);
     }
 });
 
