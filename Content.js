@@ -30,11 +30,16 @@ setInterval(() => {
 function showSamuraiToast(trackName) {
   const toast = document.createElement('div');
   toast.id = 'smt4-toast';
-  const bodyText = trackName || "Oh, a Hunter...";
-  toast.innerHTML = `
-    <div class="toast-header">Amazon SMT Music Companion</div>
-    <div class="toast-body">Now Playing: ${bodyText}</div>
-  `;
+  const header = document.createElement('div');
+  header.className = 'toast-header';
+  header.textContent = 'Amazon SMT Music Companion';
+
+  const body = document.createElement('div');
+  body.className = 'toast-body';
+  body.textContent = trackName ? `Now Playing: ${trackName}` : "Oh, a Hunter...";
+
+  toast.appendChild(header);
+  toast.appendChild(body);
   document.body.appendChild(toast);
 
   // Remove after 5 seconds
