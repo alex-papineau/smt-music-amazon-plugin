@@ -6,7 +6,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     const defaults = {
         enabled: data.enabled ?? true,
         volume: data.volume ?? 50,
-        track: data.track ?? getRandomTrackUrl()
+        track: data.track ?? getRandomTrackUrl(),
+        onlyActiveTab: data.onlyActiveTab ?? true
     };
 
     // Ensure track is remote and using the correct repo
@@ -86,7 +87,10 @@ function applyPlaybackState() {
 
 // Helper to sync offscreen document state or direct audio with current browser state
 async function syncState() {
-    let { enabled, volume, track } = await chrome.storage.local.get(['enabled', 'volume', 'track']);
+    let { enabled, volume, track, onlyActiveTab } = await chrome.storage.local.get(['enabled', 'volume', 'track', 'onlyActiveTab']);
+
+    // Default onlyActiveTab if not set
+    if (onlyActiveTab === undefined) onlyActiveTab = true;
 
     // Robust Migration: Always check if the current track is a legacy local path or old repo
     const isOldPath = track && (track.startsWith('assets/') || track.startsWith('content/'));
@@ -114,13 +118,28 @@ async function syncState() {
     });
 
     const hasAmazonTabs = amazonTabs.length > 0;
-    console.log(`Sync check: enabled=${enabled}, active amazon tabs=${amazonTabs.length}, track=${track}`);
+
+    // Check if current active tab is Amazon
+    let isActiveTabAmazon = false;
+    if (onlyActiveTab) {
+        const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+        if (activeTab && activeTab.url) {
+            const url = activeTab.url;
+            isActiveTabAmazon = url.includes('amazon.com') || url.includes('amazon.ca') || url.includes('amazon.co.uk') ||
+                url.includes('amazon.de') || url.includes('amazon.fr') || url.includes('amazon.it') ||
+                url.includes('amazon.es') || url.includes('amazon.co.jp');
+        }
+    }
+
+    const shouldPlay = enabled && hasAmazonTabs && (!onlyActiveTab || isActiveTabAmazon);
+
+    console.log(`Sync check: enabled=${enabled}, active amazon tabs=${amazonTabs.length}, onlyActiveTab=${onlyActiveTab}, isActiveTabAmazon=${isActiveTabAmazon}, track=${track}`);
 
     // Priority Logic: Use Offscreen for Chrome (Service Workers), but Direct Audio for Firefox (Background Pages)
     // UNLESS direct audio fails or isn't possible.
     if (!HAS_DOM) {
         // Service Worker / Offscreen Logic (Chrome)
-        if (enabled && hasAmazonTabs) {
+        if (shouldPlay) {
             await ensureOffscreen();
             setTimeout(() => {
                 chrome.runtime.sendMessage({ type: 'SYNC_OFFSCREEN', settings: { enabled, volume, track } }).catch(() => { });
@@ -131,7 +150,7 @@ async function syncState() {
     } else {
         // Direct Audio Logic (Firefox)
         // Only update state here - actual play() is called synchronously from the message handler
-        updateDirectAudio(track, volume, enabled && hasAmazonTabs);
+        updateDirectAudio(track, volume, shouldPlay);
     }
 }
 
@@ -266,6 +285,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
             });
         }, 100);
     }
+});
+
+// New listeners for "Active Tab Only" mode
+chrome.tabs.onActivated.addListener(() => {
+    syncState().then(() => {
+        if (HAS_DOM) applyPlaybackState();
+    });
+});
+
+chrome.windows.onFocusChanged.addListener(() => {
+    syncState().then(() => {
+        if (HAS_DOM) applyPlaybackState();
+    });
 });
 
 // Initial sync

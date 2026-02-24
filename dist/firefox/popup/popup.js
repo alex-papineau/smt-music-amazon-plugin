@@ -1,4 +1,5 @@
 const powerToggle = document.getElementById('power-toggle');
+const activeTabToggle = document.getElementById('active-tab-toggle');
 const volumeSlider = document.getElementById('volume-slider');
 const trackSelect = document.getElementById('track-select');
 const playBtn = document.getElementById('play-btn');
@@ -18,10 +19,11 @@ function populateTracks() {
 }
 
 // Load settings
-chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
+chrome.storage.local.get(['enabled', 'volume', 'track', 'onlyActiveTab'], (data) => {
     populateTracks();
 
     powerToggle.checked = data.enabled !== false; // Default to true
+    activeTabToggle.checked = data.onlyActiveTab !== false; // Default to true
     volumeSlider.value = data.volume || 50;
 
     let track = data.track || getDefaultTrackUrl();
@@ -42,6 +44,7 @@ chrome.storage.local.get(['enabled', 'volume', 'track'], (data) => {
 function updateSettings() {
     const settings = {
         enabled: powerToggle.checked,
+        onlyActiveTab: activeTabToggle.checked,
         volume: parseInt(volumeSlider.value),
         track: trackSelect.value
     };
@@ -50,6 +53,7 @@ function updateSettings() {
 }
 
 powerToggle.addEventListener('change', updateSettings);
+activeTabToggle.addEventListener('change', updateSettings);
 volumeSlider.addEventListener('input', updateSettings);
 trackSelect.addEventListener('change', updateSettings);
 
