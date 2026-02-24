@@ -32,16 +32,6 @@ chrome.storage.local.get(['enabled', 'volume', 'track', 'onlyActiveTab'], (data)
     volumeSlider.value = data.volume || 50;
 
     let track = data.track || getDefaultTrackUrl();
-
-    // For legacy support/safety if someone has an old local path stored or old name/repo
-    const isOldPath = track.startsWith('assets/') || track.startsWith('content/');
-    const isOldRepo = track.includes('smt-music-amazon-plugin');
-    const isOldFilename = track.endsWith('/black_market.webm') && !track.includes('smt4_') && !track.includes('p1_');
-
-    if (isOldPath || isOldRepo || isOldFilename) {
-        track = getDefaultTrackUrl();
-    }
-
     trackSelect.value = track;
 });
 
@@ -66,7 +56,7 @@ activeTabToggle.addEventListener('change', updateSettings);
 volumeSlider.addEventListener('input', updateSettings);
 trackSelect.addEventListener('change', updateSettings);
 
-// Listen for background changes (like Randomization) to keep UI in sync
+// Keep UI in sync with storage
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.track) {
         trackSelect.value = changes.track.newValue;

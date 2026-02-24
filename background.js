@@ -1,4 +1,4 @@
-// Initialize storage with defaults and handle migrations
+// Initialize storage with defaults
 chrome.runtime.onInstalled.addListener(async (details) => {
     const data = await chrome.storage.local.get(['enabled', 'volume', 'track', 'onlyActiveTab']);
 
@@ -9,19 +9,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         onlyActiveTab: data.onlyActiveTab ?? true
     };
 
-    // Ensure track is remote and using the correct repo
-    const isOldPath = defaults.track.startsWith('assets/') || defaults.track.startsWith('content/');
-    const isOldRepo = defaults.track.includes('smt-music-amazon-plugin');
-    const isOldFilename = defaults.track.endsWith('/black_market.webm') && !defaults.track.includes('smt4_') && !defaults.track.includes('p1_');
-
-    if (isOldPath || isOldRepo || isOldFilename) {
-        defaults.track = getDefaultTrackUrl();
-    }
-
     await chrome.storage.local.set(defaults);
 });
 
-// Firefox Environment: Background pages always have DOM access
+// Audio Player
 let audioPlayer = new Audio();
 audioPlayer.loop = true;
 audioPlayer.crossOrigin = 'anonymous';
@@ -30,8 +21,8 @@ let currentTrack = '';
 let currentVolume = 50;
 let isAudioEnabled = true;
 
-// Function to handle direct audio playback
-function updateDirectAudio(track, volume, enabled) {
+// Function to handle audio playback state
+function updateAudioState(track, volume, enabled) {
     if (!audioPlayer) return;
 
     if (track !== undefined) {
@@ -40,7 +31,7 @@ function updateDirectAudio(track, volume, enabled) {
             : chrome.runtime.getURL(track);
 
         if (track !== currentTrack && track) {
-            console.log(`Changing track source to: ${trackUrl}`);
+            console.log(`Loading track: ${trackUrl}`);
             currentTrack = track;
             audioPlayer.src = trackUrl;
             audioPlayer.load();
@@ -56,45 +47,34 @@ function updateDirectAudio(track, volume, enabled) {
         isAudioEnabled = enabled;
     }
 
-    console.log(`Direct Audio State: enabled=${isAudioEnabled}, volume=${currentVolume}, track=${currentTrack}`);
+    console.log(`Audio state updated: enabled=${isAudioEnabled}, volume=${currentVolume}, track=${currentTrack}`);
 }
 
-// Separated play/pause logic so it can be called synchronously
+// Play/Pause execution
 function applyPlaybackState() {
     if (!audioPlayer) return;
     if (isAudioEnabled) {
         if (audioPlayer.paused) {
-            console.log('Starting direct playback');
+            console.log('Starting playback');
             audioPlayer.play().catch(err => {
-                if (err.name !== 'AbortError') console.error('Direct playback failed:', err);
+                if (err.name !== 'AbortError') console.error('Playback failed:', err);
             });
         }
     } else {
         if (!audioPlayer.paused) {
-            console.log('Pausing direct playback');
+            console.log('Pausing playback');
             audioPlayer.pause();
         }
     }
 }
 
-// Helper to sync direct audio with current browser state
+// Sync player with storage and browser tabs
 async function syncState() {
     let { enabled, volume, track, onlyActiveTab } = await chrome.storage.local.get(['enabled', 'volume', 'track', 'onlyActiveTab']);
 
     if (onlyActiveTab === undefined) onlyActiveTab = true;
 
-    // Robust Migration: Always check if the current track is a legacy local path or old repo
-    const isOldPath = track && (track.startsWith('assets/') || track.startsWith('content/'));
-    const isOldRepo = track && track.includes('smt-music-amazon-plugin');
-    const isOldFilename = track && track.endsWith('/black_market.webm') && !track.includes('smt4_') && !track.includes('p1_');
-
-    if (isOldPath || isOldRepo || isOldFilename) {
-        console.log("Migration triggered: correcting legacy track path.");
-        track = getDefaultTrackUrl();
-        await chrome.storage.local.set({ track });
-    }
-
-    // Check if any Amazon tabs are open
+    // Check for Amazon tabs
     const amazonTabs = await chrome.tabs.query({
         url: [
             "https://*.amazon.com/*",
@@ -110,7 +90,7 @@ async function syncState() {
 
     const hasAmazonTabs = amazonTabs.length > 0;
 
-    // Check if current active tab is Amazon
+    // Check if the focused tab is Amazon
     let isActiveTabAmazon = false;
     if (onlyActiveTab) {
         const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -124,12 +104,12 @@ async function syncState() {
 
     const shouldPlay = enabled && hasAmazonTabs && (!onlyActiveTab || isActiveTabAmazon);
 
-    console.log(`Sync check: enabled=${enabled}, active amazon tabs=${amazonTabs.length}, onlyActiveTab=${onlyActiveTab}, isActiveTabAmazon=${isActiveTabAmazon}, track=${track}`);
+    console.log(`Sync complete: shouldPlay=${shouldPlay}, onlyActiveTab=${onlyActiveTab}, activeVisible=${isActiveTabAmazon}`);
 
-    updateDirectAudio(track, volume, shouldPlay);
+    updateAudioState(track, volume, shouldPlay);
 }
 
-// Handle messages
+// Handle incoming messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'AMAZON_VISITED') {
         syncState().then(() => {
@@ -139,16 +119,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         randomizeTrack();
     } else if (message.type === 'RESTART_TRACK') {
         if (audioPlayer) {
-            console.log("Restarting track");
             audioPlayer.currentTime = 0;
             audioPlayer.play().catch(console.error);
         }
     }
-
     return false;
 });
 
-// Select a random track and update storage
+// New random selection
 async function randomizeTrack() {
     const newTrack = getRandomTrackUrl();
     await chrome.storage.local.set({ track: newTrack });
@@ -157,18 +135,14 @@ async function randomizeTrack() {
     });
 }
 
-// Keep-alive for Firefox
+// Firefox persistent connection listener
 chrome.runtime.onConnect.addListener((port) => {
     if (port.name === 'keep-alive') {
-        port.onMessage.addListener((msg) => {
-            if (msg.type === 'ping') {
-                // Ping received
-            }
-        });
+        port.onMessage.addListener(() => { /* Heartbeat */ });
     }
 });
 
-// Listen for storage changes
+// React to setting changes
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
         syncState().then(() => {
@@ -177,16 +151,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
 });
 
-// Heartbeat alarm to keep background script alive
+// Script wake-up alarm
 chrome.alarms.create('heartbeat', { periodInMinutes: 0.5 });
-chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'heartbeat') {
-        // Heartbeat pulse
-    }
-});
+chrome.alarms.onAlarm.addListener(() => { /* Awake */ });
 
-// Tab event listeners
-chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+// Tab lifecycle management
+chrome.tabs.onRemoved.addListener(() => {
     setTimeout(() => {
         syncState().then(() => {
             applyPlaybackState();
@@ -216,5 +186,5 @@ chrome.windows.onFocusChanged.addListener(() => {
     });
 });
 
-// Initial sync
+// Start sync
 syncState();
