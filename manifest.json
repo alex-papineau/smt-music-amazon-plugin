@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Amazon SMT Music Companion",
     "description": "Plays music from a selection of black market/shopping related tracks from ATLUS' various games (SMT 4, SMT 3, P1 and P3 so far) while browsing Amazon. Complete with a popup UI to control the music.",
-    "version": "3.0.0",
+    "version": "4.0.0",
     "icons": {
         "16": "assets/smirk.png",
         "48": "assets/smirk.png",
