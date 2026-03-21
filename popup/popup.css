@@ -36,7 +36,7 @@ h1 {
 .status-blink {
     width: 30px;
     height: 30px;
-    background-image: url('../img/status-blink.png');
+    background-image: url('../img/press-start.gif');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
