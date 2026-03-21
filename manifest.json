@@ -2,11 +2,11 @@
     "manifest_version": 3,
     "name": "Amazon SMT Music Companion",
     "description": "Plays music from a selection of black market/shopping related tracks from ATLUS' various games (SMT 4, SMT 3, P1 and P3 so far) while browsing Amazon. Complete with a popup UI to control the music.",
-    "version": "4.0.0",
+    "version": "5.0.0",
     "icons": {
-        "16": "assets/smirk.png",
-        "48": "assets/smirk.png",
-        "128": "assets/smirk.png"
+        "16": "assets/press-turn.png",
+        "48": "assets/press-turn.png",
+        "128": "assets/press-turn.png"
     },
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'none'; media-src 'self' https://alex-papineau.github.io;"
@@ -28,7 +28,7 @@
     ],
     "action": {
         "default_popup": "popup/popup.html",
-        "default_icon": "assets/smirk.png"
+        "default_icon": "assets/press-turn.png"
     },
     "background": {
         "scripts": [
@@ -54,6 +54,16 @@
             ],
             "css": [
                 "Content.css"
+            ]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "font/*"
+            ],
+            "matches": [
+                "<all_urls>"
             ]
         }
     ],
