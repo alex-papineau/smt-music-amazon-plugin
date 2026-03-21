@@ -1,29 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@font-face {
+    font-family: 'Megaten20XX';
+    src: url('font/Megaten20XX.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
 
 #smt4-toast {
     position: fixed;
     bottom: 20px;
     right: 20px;
     background-color: rgba(8, 8, 8, 0.9);
-    color: #22da09;
-    border: 2px solid #22da09;
+    color: #fff;
+    border: 2px solid #fff;
     padding: 10px 20px;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Megaten20XX', monospace;
     z-index: 999999;
     animation: slide-in 0.5s ease-out;
     pointer-events: none;
 }
 
 .toast-header {
-    font-size: 14px;
+    font-size: 11px;
     font-weight: bold;
-    border-bottom: 1px solid #22da09;
+    border-bottom: 1px solid #fff;
     margin-bottom: 5px;
     letter-spacing: 2px;
 }
 
 .toast-body {
-    font-size: 12px;
+    font-size: 11px;
 }
 
 @keyframes slide-in {
