@@ -30,13 +30,12 @@ async function updateAudioState(track, volume, enabled) {
     audioPlayer.loop = !!repeat;
 
     if (track !== undefined) {
-        const trackUrl = (track.startsWith('http://') || track.startsWith('https://'))
-            ? track
-            : chrome.runtime.getURL(track);
+        // ALWAYS stream from GitHub Pages
+        const trackUrl = getTrackUrl(track);
 
-        if (track !== currentTrack && track) {
+        if (trackUrl !== currentTrack && trackUrl) {
             console.log(`Loading track: ${trackUrl}`);
-            currentTrack = track;
+            currentTrack = trackUrl;
             audioPlayer.src = trackUrl;
             audioPlayer.load();
         }
@@ -86,14 +85,21 @@ function applyPlaybackState() {
 async function syncState() {
     let { enabled, volume, track } = await chrome.storage.local.get(['enabled', 'volume', 'track']);
 
-    // Check if the focused tab is Amazon
+    // Check if the most recent normal window has an active Amazon tab
     let isActiveTabAmazon = false;
-    const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (activeTab && activeTab.url) {
-        const url = activeTab.url;
-        isActiveTabAmazon = url.includes('amazon.com') || url.includes('amazon.ca') || url.includes('amazon.co.uk') ||
-            url.includes('amazon.de') || url.includes('amazon.fr') || url.includes('amazon.it') ||
-            url.includes('amazon.es') || url.includes('amazon.co.jp');
+    try {
+        const lastWin = await chrome.windows.getLastFocused({ populate: true, windowTypes: ['normal'] });
+        if (lastWin && lastWin.tabs) {
+            const activeTab = lastWin.tabs.find(t => t.active);
+            if (activeTab && activeTab.url) {
+                const url = activeTab.url;
+                isActiveTabAmazon = url.includes('amazon.com') || url.includes('amazon.ca') || url.includes('amazon.co.uk') ||
+                    url.includes('amazon.de') || url.includes('amazon.fr') || url.includes('amazon.it') ||
+                    url.includes('amazon.es') || url.includes('amazon.co.jp');
+            }
+        }
+    } catch(e) {
+        console.error("Window check failed", e);
     }
 
     // New logic: Music ONLY plays if enabled, browser is focused, AND on Amazon.
@@ -104,12 +110,33 @@ async function syncState() {
     updateAudioState(track, volume, shouldPlay);
 }
 
+let hasStartedSession = false;
+
+async function handleAmazonVisited() {
+    let { enabled, track } = await chrome.storage.local.get(['enabled', 'track']);
+    let changedTrack = false;
+    
+    if (!track || (!hasStartedSession && audioPlayer.paused)) {
+        track = getRandomTrackUrl();
+        hasStartedSession = true;
+        changedTrack = true;
+        chrome.storage.local.set({ track }); // Listener handles syncState and playback
+    }
+    
+    if (!changedTrack && enabled !== false) {
+        syncState().then(() => applyPlaybackState());
+    }
+    
+    const trackFilename = track.split('/').pop();
+    const trackObj = CONFIG.TRACKS.find(t => t.filename === trackFilename || getTrackUrl(t.filename) === track);
+    return { trackName: trackObj ? trackObj.name : "Unknown Track" };
+}
+
 // Handle incoming messages
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'AMAZON_VISITED') {
-        syncState().then(() => {
-            applyPlaybackState();
-        });
+        handleAmazonVisited().then(sendResponse);
+        return true;
     } else if (message.type === 'RANDOMIZE_TRACK') {
         randomizeTrack();
     } else if (message.type === 'RESTART_TRACK') {
@@ -133,6 +160,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (audioPlayer && audioPlayer.duration) {
             audioPlayer.currentTime = (message.progress / 100) * audioPlayer.duration;
             sendResponse({ success: true });
+        }
+        return false;
+    } else if (message.type === 'FORCE_PLAY') {
+        if (audioPlayer) {
+            audioPlayer.play().catch(err => {
+                if (err.name !== 'AbortError') console.error('Playback failed:', err);
+            });
+            isAudioEnabled = true;
+            syncState();
+        }
+        return false;
+    } else if (message.type === 'FORCE_PAUSE') {
+        if (audioPlayer) {
+            audioPlayer.pause();
+            isAudioEnabled = false;
+            syncState();
+        }
+        return false;
+    } else if (message.type === 'USER_INTERACTED') {
+        if (isAudioEnabled && audioPlayer && audioPlayer.paused) {
+            audioPlayer.play().catch(() => {});
         }
         return false;
     }
@@ -202,7 +250,8 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 
 // Start sync
 chrome.windows.getLastFocused({ populate: false }, (window) => {
-    // If no window is found or it's not focused, start as false
-    isBrowserFocused = !!(window && window.focused);
+    if (window && window.focused !== undefined) {
+        isBrowserFocused = window.focused;
+    }
     syncState();
 });

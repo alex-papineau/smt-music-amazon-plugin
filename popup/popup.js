@@ -13,7 +13,7 @@ const PLAY_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="current
 const PAUSE_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
 let isMusicEnabled = true;
-
+let currentActualPaused = true;
 // Populate track list from CONFIG
 function populateTracks() {
     trackSelect.innerHTML = '';
@@ -43,18 +43,7 @@ chrome.storage.local.get(['enabled', 'volume', 'track', 'playEverywhere', 'repea
     checkAmazonTab();
 });
 
-function updateSettings() {
-    const settings = {
-        enabled: isMusicEnabled,
-        volume: parseInt(volumeSlider.value),
-        track: trackSelect.value,
-        repeat: repeatBtn.classList.contains('active')
-    };
-
-    chrome.storage.local.set(settings);
-    // Optimistic UI update while waiting for actual sync
-    updateToggleIcon(settings.enabled, !settings.enabled);
-}
+// updateSettings removed to prevent stale global state overwrites
 
 function updateRepeatState(isRepeating) {
     if (isRepeating) {
@@ -65,11 +54,19 @@ function updateRepeatState(isRepeating) {
 }
 
 async function checkAmazonTab() {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tabs[0]?.url || "";
-    const isAmazon = url.includes('amazon.com') || url.includes('amazon.ca') || url.includes('amazon.co.uk') ||
-        url.includes('amazon.de') || url.includes('amazon.fr') || url.includes('amazon.it') ||
-        url.includes('amazon.es') || url.includes('amazon.co.jp');
+    let isAmazon = false;
+    try {
+        const lastWin = await chrome.windows.getLastFocused({ populate: true, windowTypes: ['normal'] });
+        if (lastWin && lastWin.tabs) {
+            const activeTab = lastWin.tabs.find(t => t.active);
+            const url = activeTab?.url || "";
+            isAmazon = url.includes('amazon.com') || url.includes('amazon.ca') || url.includes('amazon.co.uk') ||
+                url.includes('amazon.de') || url.includes('amazon.fr') || url.includes('amazon.it') ||
+                url.includes('amazon.es') || url.includes('amazon.co.jp');
+        }
+    } catch(e) {
+        console.error("Popup window check failed", e);
+    }
 
     if (isAmazon) {
         marketStatus.textContent = "ONLINE";
@@ -94,6 +91,7 @@ function updateProgress() {
         if (chrome.runtime.lastError) return;
         if (response) {
             const { currentTime, duration, paused } = response;
+            currentActualPaused = paused;
             if (duration > 0) {
                 progressBar.value = (currentTime / duration) * 100;
                 timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
@@ -136,10 +134,13 @@ function updateToggleIcon(enabled, actualPaused) {
 }
 
 
-volumeSlider.addEventListener('input', updateSettings);
+volumeSlider.addEventListener('input', () => {
+    chrome.storage.local.set({ volume: parseInt(volumeSlider.value) });
+});
+
 trackSelect.addEventListener('change', () => {
     isMusicEnabled = true;
-    updateSettings();
+    chrome.storage.local.set({ track: trackSelect.value, enabled: true });
 });
 
 // Keep UI in sync with storage
@@ -149,8 +150,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
     if (area === 'local' && changes.enabled) {
         isMusicEnabled = changes.enabled.newValue;
-        // Don't update icon here, let the poll handle it for accuracy
-        // or do an optimistic update if you prefer.
     }
     if (area === 'local' && changes.repeat) {
         updateRepeatState(changes.repeat.newValue);
@@ -158,13 +157,20 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 toggleBtn.addEventListener('click', () => {
-    isMusicEnabled = !isMusicEnabled;
-    updateSettings();
+    chrome.storage.local.get(['enabled'], () => {
+        if (currentActualPaused) {
+            chrome.runtime.sendMessage({ type: 'FORCE_PLAY' });
+            chrome.storage.local.set({ enabled: true });
+        } else {
+            chrome.runtime.sendMessage({ type: 'FORCE_PAUSE' });
+            chrome.storage.local.set({ enabled: false });
+        }
+    });
 });
 
 restartBtn.addEventListener('click', () => {
     isMusicEnabled = true;
-    updateSettings();
+    chrome.storage.local.set({ enabled: true });
     chrome.runtime.sendMessage({ type: 'RESTART_TRACK' });
     
     // Quick flash effect
@@ -174,7 +180,7 @@ restartBtn.addEventListener('click', () => {
 
 randomBtn.addEventListener('click', () => {
     isMusicEnabled = true;
-    updateSettings();
+    chrome.storage.local.set({ enabled: true });
     chrome.runtime.sendMessage({ type: 'RANDOMIZE_TRACK' });
 
     // Quick flash effect
@@ -185,5 +191,5 @@ randomBtn.addEventListener('click', () => {
 repeatBtn.addEventListener('click', () => {
     const newState = !repeatBtn.classList.contains('active');
     updateRepeatState(newState);
-    updateSettings();
+    chrome.storage.local.set({ repeat: newState });
 });

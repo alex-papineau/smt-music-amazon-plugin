@@ -1,5 +1,19 @@
 // Notify background that a valid Amazon page is loaded
-chrome.runtime.sendMessage({ type: 'AMAZON_VISITED' });
+chrome.runtime.sendMessage({ type: 'AMAZON_VISITED' }, (response) => {
+    if (response && response.trackName) {
+        const hasShownToast = sessionStorage.getItem('smt4_toast_shown');
+        if (!hasShownToast) {
+            showSamuraiToast(response.trackName);
+            sessionStorage.setItem('smt4_toast_shown', 'true');
+        }
+    }
+});
+
+const userInteracted = () => {
+    chrome.runtime.sendMessage({ type: 'USER_INTERACTED' });
+};
+document.addEventListener('click', userInteracted, { once: true });
+document.addEventListener('keydown', userInteracted, { once: true });
 
 // Keep-alive connection for Firefox background script
 let port = null;
@@ -36,7 +50,7 @@ function showSamuraiToast(trackName) {
 
   const body = document.createElement('div');
   body.className = 'toast-body';
-  body.textContent = trackName ? `Now Playing: ${trackName}` : "Oh, a Hunter...";
+  body.textContent = trackName ? `Now Playing: ${trackName}` : "";
 
   toast.appendChild(header);
   toast.appendChild(body);
@@ -48,17 +62,3 @@ function showSamuraiToast(trackName) {
     setTimeout(() => toast.remove(), 1000);
   }, 4000);
 }
-
-// Only show toast once per session if enabled
-chrome.storage.local.get(['enabled', 'track'], (data) => {
-  const hasShownToast = sessionStorage.getItem('smt4_toast_shown');
-  if (data.enabled && !hasShownToast) {
-    let trackName = null;
-    if (data.track) {
-      const trackObj = CONFIG.TRACKS.find(t => getTrackUrl(t.filename) === data.track);
-      if (trackObj) trackName = trackObj.name;
-    }
-    showSamuraiToast(trackName);
-    sessionStorage.setItem('smt4_toast_shown', 'true');
-  }
-});
